@@ -6,6 +6,7 @@ import json
 import os
 import winreg
 import subprocess
+import time
 
 import server
 
@@ -18,8 +19,6 @@ class My_frame():
         self._win_vbs = '%windir%\system32\slmgr.vbs'
         self.keypaths = [r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
                          r"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"]
-
-        self.kms_server = '127.0.0.1'
 
         self.root = Tk()
         self.root.title('KMS激活')
@@ -51,24 +50,32 @@ class My_frame():
         if gvlk_key is not None:
             status, output = subprocess.getstatusoutput('cscript {} /ipk {}'.format(self._win_vbs, gvlk_key))
             if status == 0:
-                self._insert_content('{}\n密钥安装成功\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content('{}\nWindows的GVLK密钥安装成功\n'.format('\n'.join(output.split('\n')[3:])))
             else:
-                self._insert_content('{}\n密钥安装失败\n请选择正确的Windows版本\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content(
+                    '{}\nWindows的GVLK密钥安装失败\n请选择正确的Windows版本\n'.format('\n'.join(output.split('\n')[3:])))
 
     def _activate_win(self):
-        output = os.popen('cscript "{}" /skms {}'.format(self._win_vbs, self.kms_server)).read()
-        self._insert_content('\n'.join(output.split('\n')[3:]))
-        output = os.popen('cscript "{}" /ato'.format(self._win_vbs)).read()
-        self._insert_content('\n'.join(output.split('\n')[3:]))
+        kms_server = self.kms_server_text.get(0.0, END).strip()
+
+        status, output = subprocess.getstatusoutput('cscript "{}" /skms {}'.format(self._win_vbs, kms_server))
+
+        self._insert_content('{}\n设置Windows的KMS服务器成功\n'.format('\n'.join(output.split('\n')[3:])))
+
+        status, output = subprocess.getstatusoutput('cscript "{}" /ato'.format(self._win_vbs))
+        if status == 0:
+            self._insert_content('{}\n激活Windows成功\n'.format('\n'.join(output.split('\n')[3:])))
+        else:
+            self._insert_content('{}\n激活Windows失败\n'.format('\n'.join(output.split('\n')[3:])))
 
     def _open_kms_server(self):
-        try:
-            t = threading.Thread(target=server.main, daemon=True)
-            t.start()
-            if t.is_alive():
-                self._insert_content('密钥管理服务成功开启在 127.0.0.1:1688\n')
-        except Exception as e:
-            self._insert_content(e)
+        t = threading.Thread(target=server.main)
+        t.start()
+        time.sleep(1)
+        if t.is_alive():
+            self._insert_content('密钥管理服务成功开启在 127.0.0.1:1688\n')
+        else:
+            self._insert_content('密钥管理服务开启失败\n通常每个套接字地址(协议/网络地址/端口)只允许使用一次。\n')
 
     def _get_install_location(self, software_name, keypath):
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, keypath) as software_keys:
@@ -114,15 +121,23 @@ class My_frame():
 
     def _activate_office(self):
         office_path = self.office_location.get(0.0, END).strip()
+        kms_server = self.kms_server_text.get(0.0, END).strip()
         vbs_path = os.path.join(office_path, 'OSPP.VBS')
         if os.path.isfile(vbs_path):
             self._insert_content('Office安装位置为{}\n'.format(office_path))
-            output = os.popen('cscript "{}" /sethst:{}'.format(vbs_path, self.kms_server)).read()
-            self._insert_content('\n'.join(output.split('\n')[3:]))
-            output = os.popen('cscript "{}" /act'.format(vbs_path)).read()
-            self._insert_content('\n'.join(output.split('\n')[3:]))
-            output = os.popen('cscript "{}" /dstatus'.format(vbs_path)).read()
-            self._insert_content('\n'.join(output.split('\n')[3:]))
+            status, output = subprocess.getstatusoutput('cscript "{}" /sethst:{}'.format(vbs_path, kms_server))
+            self._insert_content('{}\n设置Office的KMS服务器成功\n'.format('\n'.join(output.split('\n')[3:])))
+
+            status, output = subprocess.getstatusoutput('cscript "{}" /act'.format(vbs_path))
+            if '<Product activation successful>' in output:
+                self._insert_content('{}\n激活Office成功\n'.format('\n'.join(output.split('\n')[3:])))
+            else:
+                self._insert_content('{}\n激活Office失败\n'.format('\n'.join(output.split('\n')[3:])))
+            status, output = subprocess.getstatusoutput('cscript "{}" /dstatus'.format(vbs_path))
+            if status == 0:
+                self._insert_content('{}\n以上为Office激活的详细信息\n'.format('\n'.join(output.split('\n')[3:])))
+        else:
+            self._insert_content('Office安装位置错误，请搜索位置或者手动输入。\n')
 
     def show_activate_frame(self):
         self.activate_frame = ttk.Frame(self.root, padding='3 3 10 10')
@@ -130,27 +145,33 @@ class My_frame():
         # self.switch_frame.columnconfigure(0, weight=1)
         # self.switch_frame.rowconfigure(0, weight=1)
 
-        ttk.Button(self.activate_frame, text='开启KMS服务器', command=self._open_kms_server) \
+        ttk.Button(self.activate_frame, text='开启本机KMS服务器', command=self._open_kms_server) \
             .grid(column=0, row=0, columnspan=3, sticky=(W, E))
 
+        ttk.Label(self.activate_frame, text='KMS', font=label_font) \
+            .grid(column=0, row=1, sticky=(E, N))
+        self.kms_server_text = Text(self.activate_frame, height=1, width=30, font=content_font)
+        self.kms_server_text.insert(0.0, '127.0.0.1')
+        self.kms_server_text.grid(column=1, row=1, columnspan=2, sticky=(W, E))
+
         ttk.Label(self.activate_frame, text='Windows', font=label_font) \
-            .grid(column=0, row=1, rowspan=2, sticky=(E, N))
+            .grid(column=0, row=2, sticky=(E, N))
         self.windows_gvlk_list = ttk.Combobox(self.activate_frame, font=label_font, state='readonly',
                                               values=list(self.gvlks.keys()))
         self.windows_gvlk_list.current(0)
-        self.windows_gvlk_list.grid(column=1, row=1, sticky=(W, E))
-        ttk.Button(self.activate_frame, text='安装GVLK密钥', command=self._install_gvlk).grid(column=2, row=1)
+        self.windows_gvlk_list.grid(column=1, row=2, sticky=(W, E))
+        ttk.Button(self.activate_frame, text='安装GVLK密钥', command=self._install_gvlk).grid(column=2, row=2)
         ttk.Button(self.activate_frame, text='激活Windows', command=self._activate_win). \
-            grid(column=1, columnspan=2, row=2, sticky=(W, E))
+            grid(column=1, columnspan=2, row=3, sticky=(W, E))
 
-        ttk.Label(self.activate_frame, text='Office', font=label_font).grid(column=0, row=3, rowspan=2, sticky=(E, N))
+        ttk.Label(self.activate_frame, text='Office', font=label_font).grid(column=0, row=4, rowspan=2, sticky=(E, N))
         self.office_location = Text(self.activate_frame, height=2, width=30, font=content_font)
         self.office_location.insert(0.0, 'C:\\location')
-        self.office_location.grid(column=1, row=3, sticky=(W, E))
+        self.office_location.grid(column=1, row=4, sticky=(W, E))
         ttk.Button(self.activate_frame, text='搜索Office位置', command=lambda: next(self.office_location_iterator)) \
-            .grid(column=2, row=3, sticky=(W, E))
+            .grid(column=2, row=4, sticky=(W, E))
         ttk.Button(self.activate_frame, text='激活Office', command=self._activate_office). \
-            grid(column=1, columnspan=2, row=4, sticky=(W, E))
+            grid(column=1, columnspan=2, row=5, sticky=(W, E))
 
         for child in self.activate_frame.winfo_children():
             child.grid_configure(padx=5, pady=5)
