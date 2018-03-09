@@ -1,6 +1,7 @@
 ##KMS激活工具
 
-**本地激活服务器使用SystemRage的开源项目[py-kms](https://github.com/SystemRage/py-kms)**
+**本地激活服务器使用SystemRage的开源项目[py-kms](https://github.com/SystemRage/py-kms)，本项目的主要工作为增加易用性，实现图形化界面**
+
 
 改动源项目中timezones.py中_detect_timezone_php()函数
 ```Python
