@@ -237,6 +237,7 @@ class My_frame():
         if text_num is not None:
             self.content_text.insert(END, output_texts[text_num], tag)
         self.content_text.configure(state='disabled')
+        self.content_text.see(END)
 
     def show(self):
         self.root.mainloop()
