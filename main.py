@@ -45,37 +45,40 @@ class My_frame():
         # for (k, v) in self.gvlks.items():
         #     print(str(k).ljust(80), str(v).ljust(30))
 
+    def _open_kms_server(self):
+        t = threading.Thread(target=server.main)
+        t.start()
+        time.sleep(1)
+        if t.is_alive():
+            self._insert_content(text_num=0, tag='green')
+        else:
+            self._insert_content(text_num=1, tag='red')
+
     def _install_gvlk(self):
         gvlk_key = self.gvlks[self.windows_gvlk_list.get()]
         if gvlk_key is not None:
             status, output = subprocess.getstatusoutput('cscript {} /ipk {}'.format(self._win_vbs, gvlk_key))
             if status == 0:
-                self._insert_content('{}\nWindows的GVLK密钥安装成功\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content('\n'.join(output.split('\n')[3:]), 2, 'green')
             else:
-                self._insert_content(
-                    '{}\nWindows的GVLK密钥安装失败\n请选择正确的Windows版本\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content('\n'.join(output.split('\n')[3:]), 3, tag='red')
 
     def _activate_win(self):
         kms_server = self.kms_server_text.get(0.0, END).strip()
 
         status, output = subprocess.getstatusoutput('cscript "{}" /skms {}'.format(self._win_vbs, kms_server))
 
-        self._insert_content('{}\n设置Windows的KMS服务器成功\n'.format('\n'.join(output.split('\n')[3:])))
+        self._insert_content('\n'.join(output.split('\n')[3:]), 4, 'green')
+        self._insert_content('当前KMS服务器为 {}'.format(kms_server))
 
         status, output = subprocess.getstatusoutput('cscript "{}" /ato'.format(self._win_vbs))
         if status == 0:
-            self._insert_content('{}\n激活Windows成功\n'.format('\n'.join(output.split('\n')[3:])))
+            self._insert_content('\n'.join(output.split('\n')[3:]), 5, 'green')
         else:
-            self._insert_content('{}\n激活Windows失败\n'.format('\n'.join(output.split('\n')[3:])))
+            self._insert_content('\n'.join(output.split('\n')[3:]), 6, 'red')
 
-    def _open_kms_server(self):
-        t = threading.Thread(target=server.main)
-        t.start()
-        time.sleep(1)
-        if t.is_alive():
-            self._insert_content('密钥管理服务成功开启在 127.0.0.1:1688\n')
-        else:
-            self._insert_content('密钥管理服务开启失败\n通常每个套接字地址(协议/网络地址/端口)只允许使用一次。\n')
+        status, output = subprocess.getstatusoutput('cscript "{}" /dli'.format(self._win_vbs))
+        self._insert_content('\n'.join(output.split('\n')[3:]), 7, 'green')
 
     def _get_install_location(self, software_name, keypath):
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, keypath) as software_keys:
@@ -124,20 +127,21 @@ class My_frame():
         kms_server = self.kms_server_text.get(0.0, END).strip()
         vbs_path = os.path.join(office_path, 'OSPP.VBS')
         if os.path.isfile(vbs_path):
-            self._insert_content('Office安装位置为{}\n'.format(office_path))
+            self._insert_content(office_path, 8, 'green')
             status, output = subprocess.getstatusoutput('cscript "{}" /sethst:{}'.format(vbs_path, kms_server))
-            self._insert_content('{}\n设置Office的KMS服务器成功\n'.format('\n'.join(output.split('\n')[3:])))
+            self._insert_content('\n'.join(output.split('\n')[3:]), 9, tag='green')
+            self._insert_content('当前KMS服务器为 {}'.format(kms_server))
 
             status, output = subprocess.getstatusoutput('cscript "{}" /act'.format(vbs_path))
             if '<Product activation successful>' in output:
-                self._insert_content('{}\n激活Office成功\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content('\n'.join(output.split('\n')[3:]), 10, 'green')
             else:
-                self._insert_content('{}\n激活Office失败\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content('\n'.join(output.split('\n')[3:]), 11, 'red')
             status, output = subprocess.getstatusoutput('cscript "{}" /dstatus'.format(vbs_path))
             if status == 0:
-                self._insert_content('{}\n以上为Office激活的详细信息\n'.format('\n'.join(output.split('\n')[3:])))
+                self._insert_content('\n'.join(output.split('\n')[3:]), 12, 'green')
         else:
-            self._insert_content('Office安装位置错误，请搜索位置或者手动输入。\n')
+            self._insert_content(text_num=13, tag='red')
 
     def show_activate_frame(self):
         self.activate_frame = ttk.Frame(self.root, padding='3 3 10 10')
@@ -187,11 +191,16 @@ class My_frame():
         scrollbarY = Scrollbar(self.content_frame, orient=VERTICAL)
         scrollbarY.pack(side=RIGHT, fill=Y, anchor=N)
 
-        self.content_text = Text(self.content_frame, width=60, height=15, bg='#000000', fg='#33FF66', wrap='none',
+        self.content_text = Text(self.content_frame, width=60, height=15, bg='#242424', fg='#33FF66', wrap='none',
                                  font=("Times New Roman", 10, "normal"), state='disabled',
                                  xscrollcommand=scrollbarX.set, yscrollcommand=scrollbarY.set)
         scrollbarX.configure(command=self.content_text.xview)
         scrollbarY.configure(command=self.content_text.yview)
+
+        self.content_text.tag_configure('green', foreground='#00FF00')  # success
+        self.content_text.tag_configure('red', foreground='#FF0000')  # fail
+        self.content_text.tag_configure('yellow', foreground='#FFFF00')  # normal
+        self.content_text.tag_configure('blue', foreground='#00FFFF')
 
         # self.content_text = scrolledtext.ScrolledText(self.content_frame, width=80, height=15, bg='black', fg='green',
         #                                               wrap='none',
@@ -203,10 +212,30 @@ class My_frame():
         self.content_text.pack(expand=YES, fill=BOTH)
         # self.content_text.grid(column=0, row=0, sticky=(N, W, E, S))
 
-    def _insert_content(self, content):
+    def _insert_content(self, content=None, text_num=None, tag='yellow'):
+        output_texts = {
+            0: '密钥管理服务成功开启在 127.0.0.1:1688\n',
+            1: '密钥管理服务开启失败\n通常每个套接字地址(协议/网络地址/端口)只允许使用一次。\n',
+            2: 'Windows的GVLK密钥安装成功\n',
+            3: 'Windows的GVLK密钥安装失败\n请选择正确的Windows版本\n',
+            4: '设置Windows的KMS服务器成功\n',
+            5: '激活Windows成功\n',
+            6: '激活Windows失败\n',
+            7: '以上为Windows激活的详细信息\n',
+            8: 'Office安装位置如上\n',
+            9: '设置Office的KMS服务器成功\n',
+            10: '激活Office成功\n',
+            11: '激活Office失败\n',
+            12: '以上为Office激活的详细信息\n',
+            13: 'Office安装位置错误，请搜索位置或者手动输入。\n',
+            20: '▃' * 62 + '\n',
+        }
         self.content_text.configure(state='normal')
-        self.content_text.insert(END, '*' * 50 + '\n')
-        self.content_text.insert(END, content)
+        self.content_text.insert(END, output_texts[20], 'blue')
+        if content is not None:
+            self.content_text.insert(END, content.strip() + '\n', 'yellow')
+        if text_num is not None:
+            self.content_text.insert(END, output_texts[text_num], tag)
         self.content_text.configure(state='disabled')
 
     def show(self):
