@@ -22,3 +22,9 @@ if (tomatch[1], tomatch[2]) == (-tz._utcoffset.seconds, indst):
 - 激活Windows：自动从输入的KMS服务器处激活Windows，请确保KMS服务器可用
 - 搜索Office位置：从注册表读取Windows安装位置，如果有安装多个版本的Office再次点击可切换下一个版本，如果搜索到的安装位置有误可以手动输入位置
 - 激活Office：自动从输入的KMS服务器处、搜索或输入的Office安装处激活Office；Office 2013 及以后的版本激活不支持本机建立的KMS服务器，只能通过局域网内或互联网上等非本机的KMS服务器来激活Office
+
+未完成功能：
+- pyinstaller打包后按钮命令不执行，直接运行脚本可以执行
+- 搜索功能在Windows 10 中无效， Windows 7 有效
+
+打包命令`pyinstaller -F -w -i kms_icon.ico main.py`
