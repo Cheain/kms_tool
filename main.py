@@ -44,7 +44,7 @@ class KMSTool():
                 self.gvlks[windows_edition] = gvlk_key
 
     def open_kms_server(self):
-        t = threading.Thread(target=server.main)
+        t = threading.Thread(target=server.main, daemon=True)
         t.start()
         time.sleep(1)
         if t.is_alive():
