@@ -2,7 +2,7 @@
 @author Cheain
 @Github https://github.com/Cheain/kms_tool
 '''
-import json
+import base64
 import os
 import threading
 import time
@@ -12,20 +12,27 @@ from subprocess import getstatusoutput
 from tkinter import ttk
 
 import server
+from GVLK import GVLKs as g
+from kms_icon import icon
 
-label_font = ("Times New Roman", 12, "normal")
-content_font = ("Times New Roman", 14, "normal")
+label_font = ('Times New Roman', 12, 'normal')
+content_font = ('Times New Roman', 14, 'normal')
 
 
 class KMSTool():
     def __init__(self):
         self._win_vbs = '%windir%\system32\slmgr.vbs'
-        self._office_keypaths = [r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-                                 r"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"]
+        self._office_keypaths = [r'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                                 r'SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall']
 
         self.root = tk.Tk()
         self.root.title('KMS激活')
         # self.root.geometry('600x800')
+        with open('tmp.ico', 'wb+') as tmp:
+            tmp.write(base64.b64decode(icon))
+        self.root.iconbitmap('tmp.ico')
+        os.remove('tmp.ico')
+
         self.root.resizable(False, False)
 
         self._get_gvlks()
@@ -35,8 +42,6 @@ class KMSTool():
         self._office_location_iterator = self._search_office_vbs()
 
     def _get_gvlks(self):
-        with open('GVLK.json', 'r') as f:
-            g = json.load(f)
         self.gvlks = {'******  选择Windows版本  ******': None}
         for (windows_editions, gvlk_keys) in g.items():
             self.gvlks['******  {}  ******'.format(windows_editions)] = None
@@ -55,11 +60,14 @@ class KMSTool():
     def install_gvlk(self):
         gvlk_key = self.gvlks[self.windows_gvlk_list.get()]
         if gvlk_key is not None:
+            self.insert_content('尝试为本机安装 {} 的GVLK密钥 {}'.format(self.windows_gvlk_list.get(), gvlk_key))
             status, output = getstatusoutput('cscript {} /ipk {}'.format(self._win_vbs, gvlk_key))
             if status == 0:
                 self.insert_content('\n'.join(output.split('\n')[3:]), 2, 'green')
             else:
                 self.insert_content('\n'.join(output.split('\n')[3:]), 3, 'red')
+        else:
+            self.insert_content('请选择操作系统版本')
 
     def activate_win(self):
         kms_server = self.kms_server_text.get(0.0, tk.END).strip()
@@ -180,7 +188,7 @@ class KMSTool():
         scrollbarY.pack(side=tk.RIGHT, fill=tk.Y, anchor=tk.N)
 
         self.content_text = tk.Text(self.content_frame, width=60, height=15, bg='#242424', fg='#33FF66', wrap='none',
-                                    font=("Times New Roman", 10, "normal"), state='disabled',
+                                    font=('Times New Roman', 10, 'normal'), state='disabled',
                                     xscrollcommand=scrollbarX.set, yscrollcommand=scrollbarY.set)
         scrollbarX.configure(command=self.content_text.xview)
         scrollbarY.configure(command=self.content_text.yview)
@@ -214,7 +222,7 @@ class KMSTool():
         self.content_text.configure(state='normal')
         self.content_text.insert(tk.END, output_texts[20], 'blue')
         if content is not None:
-            self.content_text.insert(tk.END, content.strip() + '\n', 'yellow')
+            self.content_text.insert(tk.END, str(content).strip() + '\n', 'yellow')
         if text_num is not None:
             self.content_text.insert(tk.END, output_texts[text_num], tag)
         self.content_text.configure(state='disabled')
